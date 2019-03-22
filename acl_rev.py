@@ -5,16 +5,26 @@
 import re
 import sys
 
+
+def makeprint(file_desc):
+    """returns function to print to desired output"""
+    return lambda *param, **arg: print(*param, **arg, file=file_desc)
+
+
+printerr = makeprint(sys.stderr)
+
 if len(sys.argv) > 1:
     file_name = sys.argv[1]
     acl_file = open(file_name)
     output_name = file_name + '.rev'
-    print("results would be written in", output_name)
+    printerr("results would be written in", output_name)
     output_file = open(output_name, mode='w')
 else:
     acl_file = sys.stdin
     output_file = sys.stdout
-    print("no file specified. Reading from STDIN, writing to STDOUT")
+    printerr("no file specified. Reading from STDIN, writing to STDOUT")
+
+printout = makeprint(output_file)
 
 ip_ptrn = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
 remark_ptrn = r'.*remark (?P<remark_text>).*'
@@ -33,16 +43,9 @@ rule_ptrn = r'(?P<beginning>.*)' + \
         (remark_ptrn, rule_ptrn, ip_ptrn)
     )
 )
-print(remark_ptrn, rule_ptrn, ip_ptrn, sep='\n\n')
 
 
-def makeprint(file_desc):
-    """returns function to print to desired output"""
-    return lambda *param, **arg: print(*param, **arg, file=file_desc)
-
-
-printerr = makeprint(sys.stderr)
-printout = makeprint(output_file)
+printerr(remark_ptrn, rule_ptrn, ip_ptrn, sep='\n\n')
 
 for string in acl_file:
     string = string.rstrip()
@@ -53,11 +56,16 @@ for string in acl_file:
     elif rule_re.match(string):
         match = rule_re.match(string)
         printerr("it's a rule!")
-        processed = (match.group('beginning'), match.group('action'),
-                     match.group('protocol'),
-                     match.group('destination'), match.group('dst_port') or '',
-                     match.group('source'), match.group('src_port') or ''
-                     )
+        tags = ('beginning', 'action', 'protocol',
+                'destination', 'dst_port',
+                'source', 'src_port')
+
+        processed = list(match.group(*tags))
+        printerr([[tags[tag], processed[tag]] for tag in range(len(tags))])
+        for tag in range(len(tags)):
+            if not processed[tag]:
+                processed[tag] = ''
+
         string = re.sub(r'\s+', ' ', ' '.join(processed))
         printerr(string)
     elif ip_re.match(string):
