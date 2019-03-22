@@ -2,13 +2,9 @@
 # script does not verify validity of ACL
 # it just reverses its direction
 
-# import collections
 import re
 import sys
 
-# Parser = collections.namedtuple('ACLparser', ['name', 'pattern', 'parser'])
-
-acl_file = sys.stdin
 if len(sys.argv) > 1:
     file_name = sys.argv[1]
     acl_file = open(file_name)
@@ -16,18 +12,20 @@ if len(sys.argv) > 1:
     print("results would be written in", output_name)
     output_file = open(output_name, mode='w')
 else:
-    print("no file specified. Reading from stdin")
+    acl_file = sys.stdin
     output_file = sys.stdout
+    print("no file specified. Reading from STDIN, writing to STDOUT")
 
 ip_ptrn = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
 remark_ptrn = r'.*remark (?P<remark_text>).*'
-src_ptrn = r'(?P<source>host ' + ip_ptrn + '|' + \
-    ip_ptrn + ' ' + ip_ptrn + '|any)'
-dst_ptrn = r'(?P<destination>host ' + ip_ptrn + \
-    '|' + ip_ptrn + ' ' + ip_ptrn + '|any)'
-rule_ptrn = r'(?P<beginning>.*) (?P<action>permit|deny) (?P<protocol>\w+) ' \
-    + src_ptrn + r'(?P<src_port> eq \w+)?' + ' ' \
-    + dst_ptrn + r'(?P<dst_port> eq \w+)?'
+src_ptrn = r'(?P<source>host\s+' + ip_ptrn + '|' + \
+    ip_ptrn + r'\s+' + ip_ptrn + '|any)'
+dst_ptrn = r'(?P<destination>host\s+' + ip_ptrn + \
+    '|' + ip_ptrn + r'\s+' + ip_ptrn + '|any)'
+rule_ptrn = r'(?P<beginning>.*)' + \
+    r'\s+(?P<action>permit|deny)\s+(?P<protocol>\w+)\s+' \
+    + src_ptrn + r'(?P<src_port>\s+eq \w+)?\s+' \
+    + dst_ptrn + r'(?P<dst_port>\s+eq \w+)?'
 
 (remark_re, rule_re, ip_re) = list(
     map(
@@ -60,7 +58,7 @@ for string in acl_file:
                      match.group('destination'), match.group('dst_port') or '',
                      match.group('source'), match.group('src_port') or ''
                      )
-        string = ' '.join(processed)
+        string = re.sub(r'\s+', ' ', ' '.join(processed))
         printerr(string)
     elif ip_re.match(string):
         printerr("i don't know what it is, but it contains IP!")
