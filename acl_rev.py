@@ -7,11 +7,15 @@ import sys
 
 
 def makeprint(file_desc):
-    """returns function to print to desired output"""
+    """returns function to print to provided file object"""
     return lambda *param, **arg: print(*param, **arg, file=file_desc)
 
 
-printerr = makeprint(sys.stderr)
+if sys.stderr.isatty:
+    printerr = makeprint(sys.stderr)
+else:
+    printerr = makeprint(open('/dev/null', mode='w'))
+
 
 if len(sys.argv) > 1:
     file_name = sys.argv[1]
@@ -19,6 +23,10 @@ if len(sys.argv) > 1:
     output_name = file_name + '.rev'
     printerr("results would be written in", output_name)
     output_file = open(output_name, mode='w')
+elif sys.stdin.closed:
+    printerr("no file provided and STDIN closed.",
+             "can not operate without input")
+    exit
 else:
     acl_file = sys.stdin
     output_file = sys.stdout
