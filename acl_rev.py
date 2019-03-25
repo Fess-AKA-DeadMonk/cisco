@@ -1,6 +1,9 @@
 #!/usr/bin/env python36
 """script does not verify validity of ACL
-it just reverses its direction"""
+it just reverses its direction
+it would not work with short port format (without `eq` or other operators)
+like `access-list 101 deny icmp any 10.1.1.0 0.0.0.255 echo`
+"""
 
 import re
 import sys
@@ -36,19 +39,21 @@ printout = makeprint(output_file)
 
 tags_rev_order = ['beginning', 'action', 'protocol',
                   'destination', 'dst_port',
-                  'source', 'src_port']
+                  'source', 'src_port', 'sub_action']
 tags_no_debug = ['beginning']
 
 ip_ptrn = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
 remark_ptrn = r'.*remark (?P<remark_text>.*)'
-src_ptrn = r'(?P<source>host\s+' + ip_ptrn + '|' + \
-    ip_ptrn + r'\s+' + ip_ptrn + '|any)'
-dst_ptrn = r'(?P<destination>host\s+' + ip_ptrn + \
-    '|' + ip_ptrn + r'\s+' + ip_ptrn + '|any)'
-rule_ptrn = r'(?P<beginning>.*)' + \
-    r'\s+(?P<action>permit|deny)\s+(?P<protocol>\w+)\s+' \
-    + src_ptrn + r'(?P<src_port>\s+eq \w+)?\s+' \
-    + dst_ptrn + r'(?P<dst_port>\s+eq \w+)?'
+addr_ptrn = r'host\s+' + ip_ptrn + '|' + ip_ptrn + r'\s+' + ip_ptrn + '|any'
+src_ptrn = r'(?P<source>' + addr_ptrn + ')'
+dst_ptrn = r'(?P<destination>' + addr_ptrn + ')'
+port_ptrn = r'eq\s+\w+|' + \
+    r'ge\s+\w+|' + r'le\s+\w+|' + r'range\s+\w+\s+\w+'
+rule_ptrn = r'(?P<beginning>.*)' \
+    + r'\s+(?P<action>permit|deny)' + r'\s+(?P<protocol>\w+)\s+' \
+    + src_ptrn + r'\s+(?P<src_port>' + port_ptrn + r')?\s*' \
+    + dst_ptrn + r'\s*(?P<dst_port>' + port_ptrn + r')?' \
+    + r'\s*(?P<sub_action>.*)'
 
 (remark_re, rule_re, ip_re) = list(
     map(
@@ -68,7 +73,6 @@ for string in acl_file:
         printerr("REMARK", match.group('remark_text'), sep='\t>')
     elif rule_re.match(string):
         match = rule_re.match(string)
-
         processed = match.groupdict(default='')
         printerr("RULE\t>",
                  *[debug_format.format(tag, processed[tag])
