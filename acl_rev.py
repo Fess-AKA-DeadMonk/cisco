@@ -62,16 +62,21 @@ rule_ptrn = r'(?P<beginning>.*)' \
     )
 )
 
+progress = dict([(key, 0) for key in 'rules remarks unknown total'.split()])
+
 width = max([len(tag)
              for tag in tags_rev_order if tag not in tags_no_debug]) + 1
 debug_format = '{:' + str(width) + '}>{}<'
 for string in acl_file:
+    progress['total'] += 1
     string = string.rstrip()
     printerr("IN", string, sep='\t>')
     if remark_re.match(string):
+        progress['remarks'] += 1
         match = remark_re.match(string)
         printerr("REMARK", match.group('remark_text'), sep='\t>')
     elif rule_re.match(string):
+        progress['rules'] += 1
         match = rule_re.match(string)
         processed = match.groupdict(default='')
         printerr("RULE\t>",
@@ -82,9 +87,13 @@ for string in acl_file:
         string = re.sub(r'\s+', ' ',
                         ' '.join([processed[tag] for tag in tags_rev_order]))
         printerr("REV", string, sep='\t>')
-    elif ip_re.match(string):
-        printerr(
-            "WARNING", "i don't know what it is, but it contains IP!", sep='\t>')
     else:
-        printerr("WARNING", "i don't khow what it is", sep='\t>')
+        progress['unknown'] += 1
+        if ip_re.match(string):
+            printerr("WARNING",
+                     "i don't know what it is, but it contains IP!",
+                     sep='\t>')
+        else:
+            printerr("WARNING", "i don't khow what it is", sep='\t>')
     printout(string)
+printerr(progress)
