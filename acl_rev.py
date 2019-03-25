@@ -1,6 +1,6 @@
 #!/usr/bin/env python36
-# script does not verify validity of ACL
-# it just reverses its direction
+"""script does not verify validity of ACL
+it just reverses its direction"""
 
 import re
 import sys
@@ -26,7 +26,7 @@ if len(sys.argv) > 1:
 elif sys.stdin.closed:
     printerr("no file provided and STDIN closed.",
              "can not operate without input")
-    exit
+    exit()
 else:
     acl_file = sys.stdin
     output_file = sys.stdout
@@ -34,8 +34,13 @@ else:
 
 printout = makeprint(output_file)
 
+tags_rev_order = ['beginning', 'action', 'protocol',
+                  'destination', 'dst_port',
+                  'source', 'src_port']
+tags_no_debug = ['beginning']
+
 ip_ptrn = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
-remark_ptrn = r'.*remark (?P<remark_text>).*'
+remark_ptrn = r'.*remark (?P<remark_text>.*)'
 src_ptrn = r'(?P<source>host\s+' + ip_ptrn + '|' + \
     ip_ptrn + r'\s+' + ip_ptrn + '|any)'
 dst_ptrn = r'(?P<destination>host\s+' + ip_ptrn + \
@@ -52,32 +57,30 @@ rule_ptrn = r'(?P<beginning>.*)' + \
     )
 )
 
-
-printerr(remark_ptrn, rule_ptrn, ip_ptrn, sep='\n\n')
-
+width = max([len(tag)
+             for tag in tags_rev_order if tag not in tags_no_debug]) + 1
+debug_format = '{:' + str(width) + '}>{}<'
 for string in acl_file:
     string = string.rstrip()
-    printerr(string)
+    printerr("IN", string, sep='\t>')
     if remark_re.match(string):
         match = remark_re.match(string)
-        printerr("it's a remark!", match.group('remark_text'))
+        printerr("REMARK", match.group('remark_text'), sep='\t>')
     elif rule_re.match(string):
         match = rule_re.match(string)
-        printerr("it's a rule!")
-        tags = ('beginning', 'action', 'protocol',
-                'destination', 'dst_port',
-                'source', 'src_port')
 
-        processed = list(match.group(*tags))
-        printerr([[tags[tag], processed[tag]] for tag in range(len(tags))])
-        for tag in range(len(tags)):
-            if not processed[tag]:
-                processed[tag] = ''
+        processed = match.groupdict(default='')
+        printerr("RULE\t>",
+                 *[debug_format.format(tag, processed[tag])
+                     for tag in processed.keys() if tag not in tags_no_debug],
+                 sep='\n\t>')
 
-        string = re.sub(r'\s+', ' ', ' '.join(processed))
-        printerr(string)
+        string = re.sub(r'\s+', ' ',
+                        ' '.join([processed[tag] for tag in tags_rev_order]))
+        printerr("REV", string, sep='\t>')
     elif ip_re.match(string):
-        printerr("i don't know what it is, but it contains IP!")
+        printerr(
+            "WARNING", "i don't know what it is, but it contains IP!", sep='\t>')
     else:
-        printerr("i don't khow what it is")
+        printerr("WARNING", "i don't khow what it is", sep='\t>')
     printout(string)
