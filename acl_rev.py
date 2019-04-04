@@ -71,7 +71,22 @@ for string in acl_file:
     progress['total'] += 1
     string = string.rstrip()
     printerr("IN", string, sep='\t>')
-    if remark_re.match(string):
+    if progress['total'] == 1:
+        match = re.match(
+            r'ip access-list extended '
+            + r'(?P<acl_name>\w+)(?P<acl_direction>-in|-out)?',
+            string, re.IGNORECASE)
+        if match:
+            printerr("it is named ACL!")
+            if match.group('acl_direction') == '-in':
+                acl_direction = '-out'
+            elif match.group('acl_direction') == '-out':
+                acl_direction = '-in'
+            else:
+                acl_direction = '-rev'
+            string = 'ip access-list extended ' + \
+                match.group('acl_name') + acl_direction
+    elif remark_re.match(string):
         progress['remarks'] += 1
         match = remark_re.match(string)
         printerr("REMARK", match.group('remark_text'), sep='\t>')
