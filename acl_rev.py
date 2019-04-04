@@ -90,10 +90,11 @@ for string in acl_file:
     else:
         progress['unknown'] += 1
         if ip_re.match(string):
-            printerr("WARNING",
-                     "i don't know what it is, but it contains IP!",
-                     sep='\t>')
+            complaint = "i don't know what it is, but it contains IP!"
         else:
-            printerr("WARNING", "i don't khow what it is", sep='\t>')
+            complaint = "i don't khow what it is"
+        printerr("WARNING", complaint, sep='\t>')
+
     printout(string)
+
 printerr(progress)
