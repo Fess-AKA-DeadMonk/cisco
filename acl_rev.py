@@ -63,7 +63,7 @@ rule_ptrn = r'(?P<beginning>.*)' \
 )
 
 progress = dict([(key, 0) for key in 'rules remarks unknown total'.split()])
-
+acl = dict((key, '') for key in 'name direction'.split())
 width = max([len(tag)
              for tag in tags_rev_order if tag not in tags_no_debug]) + 1
 debug_format = '{:' + str(width) + '}>{}<'
@@ -77,16 +77,23 @@ for string in acl_file:
             + r'(?P<acl_name>\w+)(?P<acl_direction>-in|-out)?',
             string, re.IGNORECASE)
         if match:
-            printerr("it is named ACL!")
+            acl['name'] = match.group('acl_name')
             if match.group('acl_direction') == '-in':
-                acl_direction = '-out'
+                acl['direction'] = '-out'
             elif match.group('acl_direction') == '-out':
-                acl_direction = '-in'
+                acl['direction'] = '-in'
             else:
-                acl_direction = '-rev'
+                acl['direction'] = '-rev'
             string = 'ip access-list extended ' + \
-                match.group('acl_name') + acl_direction
-    elif remark_re.match(string):
+                acl['name'] + acl['direction']
+            printerr("ACL\t>",
+                     *[debug_format.format(field, acl[field])
+                       for field in acl.keys()],
+                     sep='\n\t>')
+            printout(string)
+            continue
+
+    if remark_re.match(string):
         progress['remarks'] += 1
         match = remark_re.match(string)
         printerr("REMARK", match.group('remark_text'), sep='\t>')
